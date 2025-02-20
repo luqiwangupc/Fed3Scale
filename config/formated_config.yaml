@@ -1,0 +1,45 @@
+train:  # 训练相关的配置
+  learning_rate: 1e-4
+  total_steps: 100000
+  log_step: 1000
+  ckpt_save_path: "checkpoints"
+  ckpt_save_name: "best_model_cifar10_nonIID_12699.pth"
+  # Vgg16 要改classifier的输入维度1000，cifar100要改classifier的类别100
+  evaluate_step: 10000   # 测试步数
+  ema_update_step: 10000   # EMA更新的步数（云更新）
+  class_fn: "CE"  # 分类损失
+  consis_fn: "MSE" # 无监督损失
+  optimizer: "AdamW"  # 边的优化器
+  differential:
+    use: False
+    epsilon: 10 # 差分隐私参数
+  # consistency_weight 相关配置
+  ramp_up_steps: 50000
+  initial_weight: 0.0
+  final_weight: 1.0
+  warm_mode: "gaussian"  # "cosine"
+  device: 6
+datasets: # 数据集相关的配置
+  name: 'cifar10'
+  batch_size: 128
+  labeled_ratio: 0.1
+  num_workers: 4
+  pin_memory: True
+  persistent_workers: True
+  prefetch_factor: 2
+  distributed: "nonIID"
+models: # 模型相关的配置
+  tree_list: [2,2,2]  # 树结构
+  encoder_name: "resnet50"
+  classifier_name: "small-mlp"
+  ema_decay: 0.1
+  emd_dynamic_decay: True
+  pretrain_ckpt: null
+#  pretrain_ckpt: "checkpoints/pretrained/resnet50/fashionmnist/epoch=49-val_loss=0.0835.ckpt"
+  # pretrain_ckpt是MAE预训练权重路径，如果不使用MAE预训练模型，设置为null
+#  pretrain_ckpt: "checkpoints/pretrained/resnet50/svhn/epoch=19-val_loss=0.0356.ckpt"
+pretrain: # MAE预训练相关配置
+  epochs: 20
+  img_size: 224
+  decoder_dim: 1024
+  mask_ratio: 0.75
