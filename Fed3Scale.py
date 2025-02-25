@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from tree.tree import create_tree
-from datasets.SemiDatasets import FedSemiDataset
+from datasets.SemiDatasets import FedSemiDataset, get_n_classes
 from utils.losses import get_loss_function
 from torchvision.transforms import transforms
 from utils.warmup import get_ramp_up_value
@@ -193,7 +193,7 @@ def train(config):
     test_encoder = get_encoder(config).to(device)
 
     # 获取损失函数
-    classification_criterion, consistency_criterion = get_loss_function(config.train.class_fn, config.train.consis_fn)
+    classification_criterion, consistency_criterion = get_loss_function(config.train.class_fn, config.train.consis_fn, num_class=get_n_classes(config.datasets.name))
 
     tree = create_tree(config.models.tree_list, config)
     tree.move_to_device(device)
