@@ -35,6 +35,7 @@ models: # 模型相关的配置
   ema_decay: 0.1
   emd_dynamic_decay: True
   pretrain_ckpt: null
+  algorithm: "AEMA"   # 云模型聚合算法
 #  pretrain_ckpt: "checkpoints/pretrained/resnet50/fashionmnist/epoch=49-val_loss=0.0835.ckpt"
   # pretrain_ckpt是MAE预训练权重路径，如果不使用MAE预训练模型，设置为null
 #  pretrain_ckpt: "checkpoints/pretrained/resnet50/svhn/epoch=19-val_loss=0.0356.ckpt"

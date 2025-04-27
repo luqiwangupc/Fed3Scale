@@ -50,6 +50,10 @@ def get_encoder_by_name(name: str):
         model = Efficient2SmallEncoder()
     elif name == 'efficientb2':
         model = Efficientb2Encoder()
+    elif name == 'vitb16':
+        model = ViTb16Encoder()
+    elif name == 'vitb32':
+        model = ViTb32Encoder()
     else:
         raise ValueError(f'no such model: {name}')
     return model
@@ -166,6 +170,7 @@ class Efficient2SmallEncoder(nn.Module):
     def encode(self, x):
         return self.forward(x)
 
+@singleton
 class Efficientb2Encoder(nn.Module):
     def __init__(self):
         super(Efficientb2Encoder, self).__init__()
@@ -186,11 +191,52 @@ class Efficientb2Encoder(nn.Module):
     def encode(self, x):
         return self.forward(x)
 
+@singleton
+class ViTb16Encoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = models.vit_b_16(pretrained=True)
+        self.initialize()
+
+    def initialize(self):
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+
+    def forward(self, x):
+        with torch.no_grad():
+            x = self.encoder(x)
+            return x
+
+    def encoded(self, x):
+        return self.forward(x)
+
+
+@singleton
+class ViTb32Encoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = models.vit_b_32(pretrained=True)
+        self.initialize()
+
+    def initialize(self):
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+
+    def forward(self, x):
+        with torch.no_grad():
+            x = self.encoder(x)
+            return x
+
+    def encoded(self, x):
+        return self.forward(x)
+
+
 
 if __name__ == '__main__':
-    model = get_mae_encoder('resnet50', in_channels=1, ckpt_path=None)
+    # model = get_mae_encoder('resnet50', in_channels=1, ckpt_path=None)
+    model = ViTb32Encoder()
     print(model)
-    input = torch.randn(1, 1, 224, 224)
+    input = torch.randn(1, 3, 224, 224)
     output = model(input)
     print(output.size())
     # model = get_encoder('resnet50')
