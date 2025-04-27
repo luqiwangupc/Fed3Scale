@@ -3,19 +3,29 @@ import torch.nn as nn
 from einops import repeat
 
 
-def get_classifier(name: str):
+def get_classifier(name: str, encoder_name: str, dataset_name: str) -> nn.Module:
+    if encoder_name.__contains__('vit'):
+        input_dim = 1000
+    else:
+        input_dim = 2048
+
+    if dataset_name == 'cifar100':
+        num_classes = 100
+    else:
+        num_classes = 10
+
     if name == 'small-transformer':
-        return SmallClassifier(input_dim=2048, num_classes=10)
+        return SmallClassifier(input_dim=input_dim, num_classes=num_classes)
     elif name == 'medium-transformer':
-        return MediumClassifier(input_dim=2048, num_classes=10)
+        return MediumClassifier(input_dim=input_dim, num_classes=num_classes)
     elif name == 'large-transformer':
-        return LargeClassifier(input_dim=2048, num_classes=10)
+        return LargeClassifier(input_dim=input_dim, num_classes=num_classes)
     elif name == 'small-mlp':
-        return SmallTransformerMLPClassifier(input_dim=2048, num_classes=10)
+        return SmallTransformerMLPClassifier(input_dim=input_dim, num_classes=num_classes)
     elif name == 'medium-mlp':
-        return MediumTransformerMLPClassifier(input_dim=2048, num_classes=100)
+        return MediumTransformerMLPClassifier(input_dim=input_dim, num_classes=num_classes)
     elif name == 'large-mlp':
-        return LargeTransformerMLPClassifier(input_dim=2048, num_classes=10)
+        return LargeTransformerMLPClassifier(input_dim=input_dim, num_classes=num_classes)
     else:
         raise ValueError(f'no such classifier {name}')
 

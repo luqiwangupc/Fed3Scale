@@ -3,13 +3,14 @@ import torch
 
 
 class EMA(torch.nn.Module):
-    def __init__(self, model, decay, dynamic_decay=False):
+    def __init__(self, model, decay, dynamic_decay=False, algorithm='AEMA'):
         super().__init__()
         self.model = deepcopy(model)
         self.decay = decay
         self.initialize()
         self.dynamic_decay = dynamic_decay
         self.update_counts = 0
+        self.algorithm = algorithm
         # self.update_steps = update_steps
 
     def initialize(self):
@@ -26,10 +27,23 @@ class EMA(torch.nn.Module):
         self.update_decay()
 
     def update_by_parameters(self, parameters):
+        if self.algorithm == "AEMA":
+            self.AEMA(parameters)
+        elif self.algorithm == "FedAvg":
+            self.FedAvg(parameters)
+        else:
+            raise NotImplementedError
+
+    def AEMA(self, parameters):
         with torch.no_grad():
             for ema_param, param in zip(self.model.parameters(), parameters):
                 ema_param.data = self.decay * ema_param.data + (1 - self.decay) * param
         self.update_decay()
+
+    def FedAvg(self, parameters):
+        with torch.no_grad():
+            for ema_param, param in zip(self.model.parameters(), parameters):
+                ema_param.data = param
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)

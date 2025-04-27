@@ -11,13 +11,13 @@ def get_model(level, config):
     :return: Model
     """
     if level == 0:  # Cloud
-        classifier = get_classifier(name=config.models.classifier_name)
-        ema_classifier = EMA(classifier, decay=config.models.ema_decay, dynamic_decay=config.models.emd_dynamic_decay)
+        classifier = get_classifier(name=config.models.classifier_name, encoder_name=config.models.encoder_name, dataset_name=config.datasets.name)
+        ema_classifier = EMA(classifier, decay=config.models.ema_decay, dynamic_decay=config.models.emd_dynamic_decay, algorithm=config.models.algorithm)
         del classifier
         ema_classifier.eval()
         return ema_classifier
     elif level == 1:    # Edge
-        classifier = get_classifier(name=config.models.classifier_name)
+        classifier = get_classifier(name=config.models.classifier_name, encoder_name=config.models.encoder_name, dataset_name=config.datasets.name)
         classifier.train()
         return classifier
     elif level == 2:    # End
