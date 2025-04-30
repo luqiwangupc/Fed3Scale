@@ -13,6 +13,7 @@ from collections import OrderedDict
 from models.encoder import get_encoder
 from utils.evaluate import evaluate
 import wandb
+import random
 
 
 # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -57,6 +58,8 @@ def edge_run_loop(cloud_node, config, consistency_weight, classification_criteri
         end_weak_output_list = []
         end_strong_output_list = []
         for end in edge.children:       # 遍历所有的端
+            if random.random() < config.models.end_skip_rate:
+                continue    # 跳过当前端的数据计算
             batch = end.get_batch_data()    # 获取一个Batch的数据
             end_inputs, end_labels, end_is_labeled = batch["img"], batch["label"], batch["is_labeled"]
             end_inputs = end_inputs.to(device)
