@@ -37,6 +37,7 @@ models: # 模型相关的配置
   pretrain_ckpt: null
   algorithm: "AEMA"   # 云模型聚合算法
   end_skip_rate: 0.1  # 端断连概率
+  attack_rate: 0.1  # 端为攻击者的概率
 #  pretrain_ckpt: "checkpoints/pretrained/resnet50/fashionmnist/epoch=49-val_loss=0.0835.ckpt"
   # pretrain_ckpt是MAE预训练权重路径，如果不使用MAE预训练模型，设置为null
 #  pretrain_ckpt: "checkpoints/pretrained/resnet50/svhn/epoch=19-val_loss=0.0356.ckpt"
