@@ -69,6 +69,14 @@ def edge_run_loop(cloud_node, config, consistency_weight, classification_criteri
             end_weak_input = batch['weak_img'].to(device)  # 提供给云
             end_strong_input = batch['strong_img'].to(device)
 
+            # 攻击者
+            if random.random() < config.models.attack_rate:
+                end_inputs = torch.randn_like(end_inputs, device=device)
+                end_labels = torch.randint_like(end_labels, high=get_n_classes(config.datasets.name), device=device)
+                end_is_labeled = torch.randint(0, 1, size=end_is_labeled.size(), device=device)
+                end_weak_input = torch.randn_like(end_weak_input, device=device)
+                end_strong_input = torch.randn_like(end_strong_input, device=device)
+
             # 运行端模型（编码器）
             end_output = end.run_model(end_inputs)      # 端模型运行，获取特征输出
 
