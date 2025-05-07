@@ -58,7 +58,8 @@ def edge_run_loop(cloud_node, config, consistency_weight, classification_criteri
         end_weak_output_list = []
         end_strong_output_list = []
         for end in edge.children:       # 遍历所有的端
-            if random.random() < config.models.end_skip_rate:
+            r = random.random()
+            if r < config.models.end_skip_rate:
                 continue    # 跳过当前端的数据计算
             batch = end.get_batch_data()    # 获取一个Batch的数据
             end_inputs, end_labels, end_is_labeled = batch["img"], batch["label"], batch["is_labeled"]
@@ -114,55 +115,57 @@ def edge_run_loop(cloud_node, config, consistency_weight, classification_criteri
                 end_strong_output = torch.clamp(end_strong_output, min=b, max=a)
             end_strong_output_list.append(end_strong_output)
 
-        encoded_inputs = torch.cat(end_output_list, dim=0)  # 边模型的输入，编码后的特征embedding
-        del end_output_list
-        all_end_labels = torch.cat(end_labels_list, dim=0)  # 所有端的标签（用来计算损失）
-        del end_labels_list
-        all_end_is_labeled = torch.cat(end_is_labeled_list, dim=0)  # 所有端的是否存在标签标记（用来计算无监督损失）
-        del end_is_labeled_list
-        all_end_weak = torch.cat(end_weak_output_list, dim=0)
-        del end_weak_output_list
-        all_end_strong = torch.cat(end_strong_output_list, dim=0)
-        del end_strong_output_list
-        # torch.cuda.empty_cache()
-        edge_classification_output = edge.run_model(encoded_inputs)  # 边运行，运行有标签数据(无增强)
+        if end_output_list != []:
+            encoded_inputs = torch.cat(end_output_list, dim=0)  # 边模型的输入，编码后的特征embedding
+            del end_output_list
+            all_end_labels = torch.cat(end_labels_list, dim=0)  # 所有端的标签（用来计算损失）
+            del end_labels_list
+            all_end_is_labeled = torch.cat(end_is_labeled_list, dim=0)  # 所有端的是否存在标签标记（用来计算无监督损失）
+            del end_is_labeled_list
+            all_end_weak = torch.cat(end_weak_output_list, dim=0)
+            del end_weak_output_list
+            all_end_strong = torch.cat(end_strong_output_list, dim=0)
+            del end_strong_output_list
+            # torch.cuda.empty_cache()
+            edge_classification_output = edge.run_model(encoded_inputs)  # 边运行，运行有标签数据(无增强)
 
-        # 计算损失，保障至少有一个端有标签
-        if all_end_is_labeled.sum() > 0:
-            classification_loss = classification_criterion(edge_classification_output[all_end_is_labeled],
-                                                           all_end_labels[all_end_is_labeled])
+            # 计算损失，保障至少有一个端有标签
+            if all_end_is_labeled.sum() > 0:
+                classification_loss = classification_criterion(edge_classification_output[all_end_is_labeled],
+                                                               all_end_labels[all_end_is_labeled])
+            else:
+                classification_loss = 0
+
+            # 分类损失计算完毕，节约显存
+            del encoded_inputs, all_end_labels, all_end_is_labeled, edge_classification_output
+            # torch.cuda.empty_cache()
+
+            # 无论有标签还是无标签，都进行无监督（一致性损失）
+            edge_consistency_output = edge.run_model(all_end_strong)
+            cloud_consistency_output = cloud_node.run_model(all_end_weak)
+
+            consistency_loss = consistency_criterion(
+                F.softmax(edge_consistency_output, dim=1),
+                F.softmax(cloud_consistency_output, dim=1)
+            )
+
+            # 一致性损失计算完毕，节约显存
+            del all_end_strong, all_end_weak, edge_consistency_output, cloud_consistency_output
+            # torch.cuda.empty_cache()
+
+            loss = consistency_weight * consistency_loss + classification_loss
+            edge.optimizer_step(loss)  # 更新梯度
+
+            total_loss += loss.item()
+            # 判断是不是张量决定怎么存储
+            class_loss.append(
+                classification_loss.item() if isinstance(classification_loss, torch.Tensor) else classification_loss)
+            consis_loss.append(consistency_loss.item() if isinstance(consistency_loss, torch.Tensor) else consistency_loss)
+
+            if update:  # 将边的权重传递给云
+                edge_parameters_list.append(edge.get_parameters())
         else:
-            classification_loss = 0
-
-        # 分类损失计算完毕，节约显存
-        del encoded_inputs, all_end_labels, all_end_is_labeled, edge_classification_output
-        # torch.cuda.empty_cache()
-
-        # 无论有标签还是无标签，都进行无监督（一致性损失）
-        edge_consistency_output = edge.run_model(all_end_strong)
-        cloud_consistency_output = cloud_node.run_model(all_end_weak)
-
-        consistency_loss = consistency_criterion(
-            F.softmax(edge_consistency_output, dim=1),
-            F.softmax(cloud_consistency_output, dim=1)
-        )
-
-        # 一致性损失计算完毕，节约显存
-        del all_end_strong, all_end_weak, edge_consistency_output, cloud_consistency_output
-        # torch.cuda.empty_cache()
-
-        loss = consistency_weight * consistency_loss + classification_loss
-        edge.optimizer_step(loss)  # 更新梯度
-
-        total_loss += loss.item()
-        # 判断是不是张量决定怎么存储
-        class_loss.append(
-            classification_loss.item() if isinstance(classification_loss, torch.Tensor) else classification_loss)
-        consis_loss.append(consistency_loss.item() if isinstance(consistency_loss, torch.Tensor) else consistency_loss)
-
-        if update:  # 将边的权重传递给云
-            edge_parameters_list.append(edge.get_parameters())
-
+            print("skip")
     metrics['total_loss'] = total_loss / len(cloud_node.children)
     metrics['avg_class_loss'] = sum(class_loss) / len(cloud_node.children)
     metrics['avg_consis_loss'] = sum(consis_loss) / len(cloud_node.children)
@@ -262,6 +265,6 @@ if __name__ == '__main__':
     config = OmegaConf.load('config/formated_config.yaml')
     os.makedirs('./logs', exist_ok=True)
     wandb.init(project='TreeFedSemi', dir="logs",
-               name=f"FedSemi-{config.datasets.name}-{datetime.datetime.now().strftime('%Y%m%d-%H%M')}",
+               name=f"FedSemi-{config.datasets.name}-end-skip10-{datetime.datetime.now().strftime('%Y%m%d-%H%M')}",
                config=OmegaConf.to_container(config), job_type='train')
     train(config)

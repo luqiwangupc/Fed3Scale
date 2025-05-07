@@ -3,7 +3,7 @@ train:  # 训练相关的配置
   total_steps: 100000
   log_step: 1000
   ckpt_save_path: "checkpoints"
-  ckpt_save_name: "best_model_cifar10_nonIID_12699.pth"
+  ckpt_save_name: "best_model_cifar10_end_skip10.pth"
   # Vgg16 要改classifier的输入维度1000，cifar100要改classifier的类别100
   evaluate_step: 10000   # 测试步数
   ema_update_step: 10000   # EMA更新的步数（云更新）
@@ -18,7 +18,7 @@ train:  # 训练相关的配置
   initial_weight: 0.0
   final_weight: 1.0
   warm_mode: "gaussian"  # "cosine"
-  device: 6
+  device: 2
 datasets: # 数据集相关的配置
   name: 'cifar10'
   batch_size: 128
